@@ -45,6 +45,14 @@ def next_test
 end
 
 def next_manager_action(command)
+  next_action(@console_hash[:manager][:port],command)
+end
+
+def next_client_action(command,index)
+  next_action(@console_hash[:clients][index][:port],command)
+end
+
+def next_action(port,command)
   p = TCPSocket.open("127.0.0.1", @console_hash[:manager][:port])
   p.send create_command(command), 0
   r = p.recv(1000)
@@ -78,4 +86,21 @@ def process_manager
   assert_success("goodbye",next_manager_action("goodbye"))
 end
 
+def process_client(ind)
+  assert_success("hello",next_client_action("hello",ind))
+  assert_success("goodbye",next_client_action("goodbye",ind))
+end
+
+def enable_client(ind)
+end
+
+def disable_client(ind)
+end
+
+puts "--> Testing manager <--"
 process_manager
+
+puts "--> Testing clients <--"
+@console_hash[:clients].size.times do |x|
+  process_client(x)
+end
