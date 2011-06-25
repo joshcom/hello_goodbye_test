@@ -3,13 +3,16 @@ require 'eventmachine'
 require 'socket'
 require 'json'
 
-@console_hash = { :manager => { :port => 8080 }, :clients => [
+@console_hash = { 
+  :manager => { :port => 8080 }, 
+  :clients => [
     {:port => 8081, :name => "test", :status => "stopped", :id => nil},
     {:port => 8082, :name => "test", :status => "stopped", :id => nil}
   ]
 }
 
 @test_number = 0
+@failures = 0
 
 def check_foremen
   r = next_manager_action("foremen")
@@ -53,7 +56,7 @@ def next_client_action(command,index)
 end
 
 def next_action(port,command)
-  p = TCPSocket.open("127.0.0.1", @console_hash[:manager][:port])
+  p = TCPSocket.open("127.0.0.1", port)
   p.send create_command(command), 0
   r = p.recv(1000)
   if r == ""
@@ -68,6 +71,7 @@ def report_success(response)
 end
 
 def report_failure(response,hash)
+  @failures += 1
   puts "FAILURE --> Test #{test_number} for response #{response} failed with response: #{hash.inspect}"
 end
 
@@ -88,13 +92,18 @@ end
 
 def process_client(ind)
   assert_success("hello",next_client_action("hello",ind))
+  assert_success(@console_hash[:clients][ind][:status],next_client_action("status",ind))
   assert_success("goodbye",next_client_action("goodbye",ind))
 end
 
 def enable_client(ind)
+  assert_success("ok",next_client_action("start",ind))
+  @console_hash[:clients][ind][:status] = "running"
 end
 
 def disable_client(ind)
+  assert_success("ok",next_client_action("stop",ind))
+  @console_hash[:clients][ind][:status] = "stopped"
 end
 
 puts "--> Testing manager <--"
@@ -103,4 +112,17 @@ process_manager
 puts "--> Testing clients <--"
 @console_hash[:clients].size.times do |x|
   process_client(x)
+  enable_client(x)
 end
+
+puts "--> Testing manager <--"
+process_manager
+
+puts "--> Testing clients <--"
+@console_hash[:clients].size.times do |x|
+  process_client(x)
+  disable_client(x)
+  process_client(x)
+end
+
+puts "--> Finished.  (#{@test_number} tests, #{@failures} failures)."
