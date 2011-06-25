@@ -84,6 +84,38 @@ def assert_success(response,hash)
   end
 end
 
+def enable_clients_by_name
+  @console_hash[:clients].each do |client|
+    next_manager_action("start #{client[:name]}")
+    assert_success("ok",h)
+    client[:status] = "running"
+  end
+end
+
+def disable_clients_by_name
+  @console_hash[:clients].each do |client|
+    h + next_manager_action("stop #{client[:name]}")
+    assert_success("ok",h)
+    client[:status] = "stopped"
+  end
+end
+
+def enable_all_clients
+  h = next_manager_action("start all")
+  assert_success("ok",h)
+  @console_hash[:clients].each do |client|
+    client[:status] = "running"
+  end
+end
+
+def disable_all_clients
+  h = next_manager_action("stop all")
+  assert_success("ok",h)
+  @console_hash[:clients].each do |client|
+    client[:status] = "stopped"
+  end
+end
+
 def process_manager
   assert_success("hello",next_manager_action("hello"))
   check_foremen
@@ -122,6 +154,26 @@ puts "--> Testing clients <--"
 @console_hash[:clients].size.times do |x|
   process_client(x)
   disable_client(x)
+  process_client(x)
+end
+
+puts "--> Enabling clients through manager <--"
+enable_all_clients
+puts "--> Testing manager <--"
+process_manager
+
+puts "--> Testing clients <--"
+@console_hash[:clients].size.times do |x|
+  process_client(x)
+end
+
+puts "--> Disabling clients through manager <--"
+enable_all_clients
+puts "--> Testing manager <--"
+process_manager
+
+puts "--> Testing clients <--"
+@console_hash[:clients].size.times do |x|
   process_client(x)
 end
 
